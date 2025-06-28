@@ -1,3 +1,2 @@
 streamlit
-pytesseract
-Pillow
+google-generativeai
