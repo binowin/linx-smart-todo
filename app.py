@@ -1,27 +1,53 @@
 import streamlit as st
-from PIL import Image
-import pytesseract
+import requests
 
 st.set_page_config(page_title="LinX SMART To-Do", layout="centered")
 st.title("🧠 LinX SMART To-Do")
-st.subheader("Minimal Input • Smart AI • Maximum Focus")
+st.subheader("📝 Upload Handwritten To-Do (via OCR)")
 
-input_type = st.radio("Select Input Type:", ["Typing", "Handwriting Image"])
+# User selects input method
+input_type = st.radio("Select Input Method:", ["Typing", "Handwriting Image"])
 
+# Typing input
 if input_type == "Typing":
-    task = st.text_input("Type your task here:")
-    if st.button("Submit Task"):
+    task = st.text_input("Enter your task:")
+    if st.button("Submit"):
         st.success(f"Task Added: {task}")
 
+# OCR using OCR.space API
 elif input_type == "Handwriting Image":
-    uploaded_img = st.file_uploader("Upload a handwritten to-do list (PNG or JPG)", type=["png", "jpg", "jpeg"])
+    uploaded_img = st.file_uploader("Upload handwritten to-do list image", type=["png", "jpg", "jpeg"])
 
-    if uploaded_img is not None:
-        image = Image.open(uploaded_img)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+    if uploaded_img:
+        if st.button("Extract Text with AI"):
+            with st.spinner("Processing with OCR..."):
+                response = requests.post(
+                    "https://api.ocr.space/parse/image",
+                    files={"filename": uploaded_img},
+                    data={"apikey": "helloworld", "language": "eng"}
+                )
 
-        if st.button("Extract Text with OCR"):
-            with st.spinner("Reading handwriting..."):
-                extracted_text = pytesseract.image_to_string(image)
-                st.success("📝 Extracted Tasks:")
-                st.write(extracted_text)
+                if response.status_code == 200:
+                    result = response.json()
+                    extracted_text = result['ParsedResults'][0]['ParsedText']
+                    st.success("📝 Extracted Tasks:")
+                    st.code(extracted_text)
+
+                    # Simple Eisenhower sorting
+                    st.markdown("### 🧠 Eisenhower AI Prioritization")
+                    tasks = extracted_text.strip().split('\n')
+                    def categorize(task):
+                        t = task.lower()
+                        if "urgent" in t or "today" in t or "deadline" in t:
+                            return "🟥 Urgent & Important"
+                        elif "plan" in t or "study" in t:
+                            return "🟨 Not Urgent but Important"
+                        elif "call" in t or "email" in t:
+                            return "🟦 Urgent but Not Important"
+                        else:
+                            return "⬜ Not Urgent & Not Important"
+                    for t in tasks:
+                        if t.strip():
+                            st.write(f"• **{t.strip()}** → {categorize(t)}")
+                else:
+                    st.error("❌ OCR API request failed. Try again.")
