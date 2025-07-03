@@ -36,7 +36,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --------- Authenticator Login ----------
-with open('./.config.yaml') as file:
+with open('config.yaml') as file:  # ✅ fixed filename
     config = yaml.load(file, Loader=SafeLoader)
 
 authenticator = stauth.Authenticate(
