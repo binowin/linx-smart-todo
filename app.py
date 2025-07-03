@@ -7,7 +7,7 @@ from yaml.loader import SafeLoader
 from oauth2client.service_account import ServiceAccountCredentials
 import streamlit_authenticator as stauth
 
-# --------- Page Configuration ----------
+# --------- UI & Page Setup ----------
 st.set_page_config(page_title="LinX SMART To-Do", layout="centered")
 st.title("🧠 LinX SMART To-Do")
 st.caption("Minimal Input • Smart AI • Maximum Focus")
@@ -35,27 +35,33 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --------- Authenticator Login ----------
-with open('config.yaml') as file:  # ✅ fixed filename
+# --------- Load Auth Config ----------
+with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
 authenticator = stauth.Authenticate(
-    config['credentials'], config['cookie']['name'],
-    config['cookie']['key'], config['cookie']['expiry_days']
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days']
 )
 
-name, auth_status, username = authenticator.login('Login', 'main')
+# ✅ FIXED LOGIN METHOD
+name, auth_status, username = authenticator.login(
+    form_name='Login', location='main'
+)
 
+# --------- Login State Handling ---------
 if auth_status == False:
-    st.error('Username/password is incorrect')
+    st.error("❌ Invalid username or password.")
 elif auth_status == None:
-    st.warning('Please enter your credentials')
+    st.warning("🔐 Please enter your login credentials.")
 elif auth_status:
 
     authenticator.logout('Logout', 'sidebar')
-    st.sidebar.success(f"Welcome, {name}!")
+    st.sidebar.success(f"✅ Logged in as: {name}")
 
-    # --------- Google Sheets Connection ----------
+    # --------- Connect to Google Sheet ----------
     @st.cache_resource
     def connect_gsheet():
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -66,7 +72,7 @@ elif auth_status:
 
     sheet = connect_gsheet()
 
-    # --------- AI Categorizer ----------
+    # --------- Task Categorizer (AI Sorting) ----------
     def categorize(task):
         t = task.lower()
         if "urgent" in t or "today" in t or "deadline" in t:
@@ -78,26 +84,26 @@ elif auth_status:
         else:
             return "⬜ Not Urgent & Not Important"
 
-    # --------- Input Method Selection ----------
+    # --------- Input Options ----------
     input_type = st.radio("Choose Input Type:", ["Typing", "Handwriting Image"])
 
     # --------- Typing Input ----------
     if input_type == "Typing":
-        task = st.text_input("Type your task:")
+        task = st.text_input("✍️ Type your task here:")
         if st.button("Submit Task"):
             if task:
                 category = categorize(task)
                 sheet.append_row([username, task, category])
-                st.success(f"Added: {task}")
-                st.info(f"Categorized as: {category}")
+                st.success(f"✅ Added: {task}")
+                st.info(f"📌 Category: {category}")
             else:
-                st.warning("Please enter a task before submitting.")
+                st.warning("Please type something before submitting.")
 
     # --------- OCR Image Upload ----------
     elif input_type == "Handwriting Image":
-        uploaded_img = st.file_uploader("Upload handwritten task image", type=["png", "jpg", "jpeg"])
-        if uploaded_img and st.button("Extract & Sort"):
-            with st.spinner("Processing with AI OCR..."):
+        uploaded_img = st.file_uploader("📸 Upload an image of handwritten tasks", type=["png", "jpg", "jpeg"])
+        if uploaded_img and st.button("🧠 Extract & Sort Tasks"):
+            with st.spinner("Running OCR..."):
                 result = requests.post(
                     "https://api.ocr.space/parse/image",
                     files={"filename": uploaded_img},
@@ -105,7 +111,7 @@ elif auth_status:
                 )
                 if result.status_code == 200:
                     text = result.json()['ParsedResults'][0]['ParsedText']
-                    st.success("Extracted Tasks:")
+                    st.success("✅ Extracted Tasks:")
                     st.code(text)
                     tasks = text.strip().split('\n')
                     for t in tasks:
@@ -114,11 +120,11 @@ elif auth_status:
                             sheet.append_row([username, t.strip(), category])
                             st.write(f"• **{t.strip()}** → {category}")
                 else:
-                    st.error("❌ OCR failed. Check image or API key.")
+                    st.error("❌ OCR failed. Check your image or try again later.")
 
     # --------- Pomodoro Timer ----------
-    st.markdown("### ⏱️ Pomodoro Timer")
-    if st.button("Start 25-Minute Focus"):
+    st.markdown("### ⏱️ Pomodoro Focus Timer")
+    if st.button("▶️ Start 25-Minute Focus"):
         st.success("Pomodoro started. Stay focused!")
         with st.empty():
             for remaining in range(25 * 60, 0, -1):
@@ -126,9 +132,9 @@ elif auth_status:
                 st.metric("Time Left", f"{mins:02d}:{secs:02d}")
                 time.sleep(1)
         st.balloons()
-        st.success("🎉 Pomodoro Complete!")
+        st.success("🎉 Great job! You’ve completed a Pomodoro session.")
 
-    # --------- Show Task History ----------
+    # --------- Task History ----------
     if st.checkbox("📂 View My Task History"):
         rows = sheet.get_all_records()
         user_tasks = [row for row in rows if row['username'] == username]
