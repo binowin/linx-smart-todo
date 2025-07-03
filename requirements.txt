@@ -3,7 +3,8 @@ requests
 gspread
 oauth2client
 PyYAML
-streamlit-authenticator
+streamlit-authenticator==0.2.2
+
 
 
 
