@@ -1,0 +1,16 @@
+credentials:
+  usernames:
+    binowin:
+      email: binowin@email.com
+      name: Binowin
+      password: 'pbkdf2:sha256:260000$2kThGsQUHoYUN7...'
+      # 👆 Replace with hashed password (see below)
+
+cookie:
+  name: linx_auth
+  key: some_secure_random_key
+  expiry_days: 30
+
+preauthorized:
+  emails:
+    - binowin@email.com
