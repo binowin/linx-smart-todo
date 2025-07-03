@@ -1,4 +1,9 @@
 streamlit
 requests
+gspread
+oauth2client
+PyYAML
+streamlit-authenticator
+
 
 
