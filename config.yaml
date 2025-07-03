@@ -3,7 +3,7 @@ credentials:
     binowin:
       email: binowin@email.com
       name: Binowin
-      password: 'paste_your_hashed_password_here'
+      password: 'your_hashed_password_here'  # generate at https://mkhorasani.github.io/Streamlit-Authenticator/
 
 cookie:
   name: linx_auth
