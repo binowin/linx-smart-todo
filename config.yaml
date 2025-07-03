@@ -3,12 +3,11 @@ credentials:
     binowin:
       email: binowin@email.com
       name: Binowin
-      password: 'pbkdf2:sha256:260000$2kThGsQUHoYUN7...'
-      # 👆 Replace with hashed password (see below)
+      password: 'paste_your_hashed_password_here'
 
 cookie:
   name: linx_auth
-  key: some_secure_random_key
+  key: your_secure_cookie_key
   expiry_days: 30
 
 preauthorized:
