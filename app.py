@@ -7,7 +7,7 @@ from yaml.loader import SafeLoader
 from oauth2client.service_account import ServiceAccountCredentials
 import streamlit_authenticator as stauth
 
-# --------- UI & Page Setup ----------
+# --------- UI Setup ----------
 st.set_page_config(page_title="LinX SMART To-Do", layout="centered")
 st.title("🧠 LinX SMART To-Do")
 st.caption("Minimal Input • Smart AI • Maximum Focus")
@@ -15,27 +15,16 @@ st.caption("Minimal Input • Smart AI • Maximum Focus")
 # --------- Custom CSS ----------
 st.markdown("""
     <style>
-        .block-container {
-            padding-top: 1rem;
-            padding-bottom: 2rem;
-        }
-        .stButton > button {
-            width: 100%;
-        }
-        .stRadio > div {
-            flex-direction: row;
-            gap: 1rem;
-            justify-content: center;
-        }
+        .block-container { padding-top: 1rem; padding-bottom: 2rem; }
+        .stButton > button { width: 100%; }
+        .stRadio > div { flex-direction: row; gap: 1rem; justify-content: center; }
         @media only screen and (max-width: 768px) {
-            .stTextInput, .stFileUploader {
-                width: 100% !important;
-            }
+            .stTextInput, .stFileUploader { width: 100% !important; }
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --------- Load Auth Config ----------
+# --------- Load Login Credentials ----------
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
@@ -46,12 +35,9 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-# ✅ FIXED LOGIN METHOD
-name, auth_status, username = authenticator.login(
-    form_name='Login', location='main'
-)
+# ✅ Login: Compatible with streamlit-authenticator==0.2.2
+name, auth_status, username = authenticator.login('Login', 'main')
 
-# --------- Login State Handling ---------
 if auth_status == False:
     st.error("❌ Invalid username or password.")
 elif auth_status == None:
@@ -61,7 +47,7 @@ elif auth_status:
     authenticator.logout('Logout', 'sidebar')
     st.sidebar.success(f"✅ Logged in as: {name}")
 
-    # --------- Connect to Google Sheet ----------
+    # --------- Google Sheet Connection ----------
     @st.cache_resource
     def connect_gsheet():
         scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -72,7 +58,7 @@ elif auth_status:
 
     sheet = connect_gsheet()
 
-    # --------- Task Categorizer (AI Sorting) ----------
+    # --------- Categorize Tasks with Eisenhower Logic ----------
     def categorize(task):
         t = task.lower()
         if "urgent" in t or "today" in t or "deadline" in t:
@@ -84,12 +70,11 @@ elif auth_status:
         else:
             return "⬜ Not Urgent & Not Important"
 
-    # --------- Input Options ----------
+    # --------- Task Input ----------
     input_type = st.radio("Choose Input Type:", ["Typing", "Handwriting Image"])
 
-    # --------- Typing Input ----------
     if input_type == "Typing":
-        task = st.text_input("✍️ Type your task here:")
+        task = st.text_input("✍️ Type your task:")
         if st.button("Submit Task"):
             if task:
                 category = categorize(task)
@@ -97,11 +82,10 @@ elif auth_status:
                 st.success(f"✅ Added: {task}")
                 st.info(f"📌 Category: {category}")
             else:
-                st.warning("Please type something before submitting.")
+                st.warning("Please type something.")
 
-    # --------- OCR Image Upload ----------
     elif input_type == "Handwriting Image":
-        uploaded_img = st.file_uploader("📸 Upload an image of handwritten tasks", type=["png", "jpg", "jpeg"])
+        uploaded_img = st.file_uploader("📸 Upload a handwritten task image", type=["png", "jpg", "jpeg"])
         if uploaded_img and st.button("🧠 Extract & Sort Tasks"):
             with st.spinner("Running OCR..."):
                 result = requests.post(
@@ -120,11 +104,11 @@ elif auth_status:
                             sheet.append_row([username, t.strip(), category])
                             st.write(f"• **{t.strip()}** → {category}")
                 else:
-                    st.error("❌ OCR failed. Check your image or try again later.")
+                    st.error("❌ OCR failed. Try again later.")
 
     # --------- Pomodoro Timer ----------
     st.markdown("### ⏱️ Pomodoro Focus Timer")
-    if st.button("▶️ Start 25-Minute Focus"):
+    if st.button("▶️ Start 25-Minute Pomodoro"):
         st.success("Pomodoro started. Stay focused!")
         with st.empty():
             for remaining in range(25 * 60, 0, -1):
@@ -132,7 +116,7 @@ elif auth_status:
                 st.metric("Time Left", f"{mins:02d}:{secs:02d}")
                 time.sleep(1)
         st.balloons()
-        st.success("🎉 Great job! You’ve completed a Pomodoro session.")
+        st.success("🎉 Session Complete! Great work!")
 
     # --------- Task History ----------
     if st.checkbox("📂 View My Task History"):
