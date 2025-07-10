@@ -5,7 +5,107 @@ import gspread
 import yaml
 from yaml.loader import SafeLoader
 from oauth2client.service_account import ServiceAccountCredentials
+import streamlit_authenticator as stauthimport streamlit as st
 import streamlit_authenticator as stauth
+import yaml
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import requests
+from datetime import datetime, timedelta
+
+# ------------------------------
+# Load credentials from config.yaml
+with open('config.yaml') as file:
+    config = yaml.safe_load(file)
+
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days'],
+    config['preauthorized']
+)
+
+name, authentication_status, username = authenticator.login('Login', 'main')
+
+if authentication_status == False:
+    st.error('Username/password is incorrect')
+if authentication_status == None:
+    st.warning('Please enter your username and password')
+
+if authentication_status:
+    authenticator.logout('Logout', 'sidebar')
+    st.sidebar.write(f'Welcome, {name}!')
+
+    # ------------------------------
+    # Connect to Google Sheets
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name('service_account.json', scope)
+    client = gspread.authorize(creds)
+    sheet = client.open('linx_tasks').worksheet(username)
+
+    st.title("LinX SMART To-Do")
+
+    # ------------------------------
+    # Task Input
+    task_text = st.text_input("Enter your task:")
+    uploaded_file = st.file_uploader("Or upload handwriting image (OCR):")
+
+    if st.button("Add Task"):
+        task = ""
+        if task_text:
+            task = task_text
+        elif uploaded_file is not None:
+            # Call OCR.space API
+            ocr_url = "https://api.ocr.space/parse/image"
+            result = requests.post(
+                ocr_url,
+                files={"file": uploaded_file},
+                data={"apikey": "helloworld"}
+            )
+            result_text = result.json()['ParsedResults'][0]['ParsedText']
+            task = result_text.strip()
+
+        if task:
+            # Simple Eisenhower: user chooses
+            urgency = st.selectbox("Is it urgent?", ["Yes", "No"])
+            importance = st.selectbox("Is it important?", ["Yes", "No"])
+            category = ""
+            if urgency == "Yes" and importance == "Yes":
+                category = "Do Now"
+            elif urgency == "No" and importance == "Yes":
+                category = "Schedule"
+            elif urgency == "Yes" and importance == "No":
+                category = "Delegate"
+            else:
+                category = "Eliminate"
+
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            sheet.append_row([now, task, urgency, importance, category])
+            st.success(f"Task added: {task} ({category})")
+
+    # ------------------------------
+    # Show Task History
+    st.subheader("Your Tasks")
+    data = sheet.get_all_values()
+    st.table(data)
+
+    # ------------------------------
+    # Pomodoro Timer
+    st.subheader("Pomodoro Timer (25 min)")
+    if st.button("Start Pomodoro"):
+        pomodoro_end = datetime.now() + timedelta(minutes=25)
+        st.session_state['pomodoro_end'] = pomodoro_end
+
+    if 'pomodoro_end' in st.session_state:
+        remaining = st.session_state['pomodoro_end'] - datetime.now()
+        if remaining.total_seconds() > 0:
+            mins, secs = divmod(remaining.seconds, 60)
+            st.info(f"Time left: {mins}m {secs}s")
+        else:
+            st.success("Pomodoro session complete!")
+
+
 
 # --------- UI Setup ----------
 st.set_page_config(page_title="LinX SMART To-Do", layout="centered")
