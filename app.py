@@ -71,7 +71,7 @@ elif page == "Login":
 
     if authentication_status:
         authenticator.logout('Logout', 'sidebar')
-        st.sidebar.write(f'Welcome, {name}!")
+        st.sidebar.write(f'Welcome, {name}!')  # Fixed the f-string error here.
 
         # ------------------------------
         # Connect to Google Sheets
